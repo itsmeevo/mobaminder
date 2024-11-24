@@ -1,0 +1,18 @@
+{
+  "reminders": [
+    { "time": 90, "role": "Any", "message": "First wave of jungle camps spawning" },
+    { "time": 180, "role": "Jungle", "message": "Check for scuttle crab spawning soon" },
+    { "time": 300, "role": "Any", "message": "First dragon approaching" },
+    { "time": 420, "role": "Top", "message": "Consider roaming for herald" },
+    { "time": 420, "role": "Jungle", "message": "First herald window opening" },
+    { "time": 600, "role": "Any", "message": "Laning phase typically ending" },
+    { "time": 900, "role": "Any", "message": "Second herald available soon" }
+  ],
+  "roles": [
+    { "name": "Top" },
+    { "name": "Jungle" },
+    { "name": "Mid" },
+    { "name": "Bot" },
+    { "name": "Support" }
+  ]
+}

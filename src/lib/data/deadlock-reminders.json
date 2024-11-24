@@ -1,0 +1,13 @@
+{
+    "reminders": [
+      { "time": 60, "role": "Any", "message": "Check initial resource spawns" },
+      { "time": 180, "role": "Any", "message": "First upgrade window available" },
+      { "time": 300, "role": "Any", "message": "Territory control point active" },
+      { "time": 420, "role": "Any", "message": "Second wave resources spawning" },
+      { "time": 600, "role": "Any", "message": "Mid-game transition approaching" }
+    ],
+    "roles": [
+      { "name": "Solo" },
+      { "name": "Duo" }
+    ]
+  }
