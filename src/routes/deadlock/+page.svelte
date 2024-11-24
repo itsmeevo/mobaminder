@@ -6,7 +6,7 @@
   <div class="max-w-2xl mx-auto">
     <h1 class="text-2xl font-bold mb-8">Deadlock</h1>
     
-    <div class="bg-white shadow-lg rounded-lg p-6">
+    <div class="bg-gray-800 shadow-lg rounded-lg p-6">
       <GameTimer gameType="deadlock" />
     </div>
   </div>
