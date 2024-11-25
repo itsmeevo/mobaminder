@@ -5,8 +5,11 @@
     export let volume = 0.5;
     export let useTTS = false;
     export let minimapEnabled = true;
+    export let roleRemindersEnabled = true;
+    export let objectiveRemindersEnabled = true;
+    export let macroRemindersEnabled = true;
     export let isRunning = false;
-  </script>
+</script>
   
   <div class="bg-gray-800 shadow-lg rounded-lg p-6">
     <h2 class="text-xl font-bold mb-6 text-gray-100 text-center">Settings</h2>
@@ -57,20 +60,58 @@
   
     <!-- Reminder Settings -->
     <div class="mb-6">
-      <label class="block text-sm font-medium text-gray-300 mb-2">Select Reminder Types</label>
-      <div class="flex items-center space-x-2">
-        <input 
-          type="checkbox" 
-          id="minimapToggle"
-          bind:checked={minimapEnabled}
-          class="form-checkbox h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-        />
-        <label 
-          for="minimapToggle" 
-          class="text-gray-300 text-sm"
-        >
-          Minimap Reminders
-        </label>
-      </div>
+        <label class="block text-sm font-medium text-gray-300 mb-2">Reminder Types</label>
+        
+        <!-- Minimap Reminders -->
+        <div class="flex items-center space-x-2 mb-2">
+            <input 
+                type="checkbox" 
+                id="minimapToggle"
+                bind:checked={minimapEnabled}
+                class="form-checkbox h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <label for="minimapToggle" class="text-gray-300 text-sm">
+                Minimap Reminders
+            </label>
+        </div>
+
+        <!-- Role Reminders -->
+        <div class="flex items-center space-x-2 mb-2">
+            <input 
+                type="checkbox" 
+                id="roleToggle"
+                bind:checked={roleRemindersEnabled}
+                class="form-checkbox h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <label for="roleToggle" class="text-gray-300 text-sm">
+                Role-Specific Reminders
+            </label>
+        </div>
+
+        <!-- Objective Reminders -->
+        <div class="flex items-center space-x-2 mb-2">
+            <input 
+                type="checkbox" 
+                id="objectiveToggle"
+                bind:checked={objectiveRemindersEnabled}
+                class="form-checkbox h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <label for="objectiveToggle" class="text-gray-300 text-sm">
+                Objective Reminders
+            </label>
+        </div>
+
+        <!-- Macro Reminders -->
+        <div class="flex items-center space-x-2">
+            <input 
+                type="checkbox" 
+                id="macroToggle"
+                bind:checked={macroRemindersEnabled}
+                class="form-checkbox h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+            />
+            <label for="macroToggle" class="text-gray-300 text-sm">
+                Macro Play Reminders
+            </label>
+        </div>
     </div>
   </div>
