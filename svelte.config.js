@@ -1,6 +1,7 @@
 import adapter from '@sveltejs/adapter-static';
 
-export default {
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
   kit: {
     adapter: adapter({
       pages: 'build',
@@ -10,7 +11,9 @@ export default {
       strict: true
     }),
     paths: {
-      base: process.env.NODE_ENV === 'production' ? '/mobaminder : ''
+      base: process.env.NODE_ENV === 'production' ? '/mobaminder' : ''
     }
   }
 };
+
+export default config;
