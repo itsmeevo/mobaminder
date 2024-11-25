@@ -5,18 +5,18 @@
   import deadlockReminders from '$lib/data/deadlock-reminders.json';
 
   export let gameType = 'lol';
+  export let selectedRole = "Any";
+  export let volume = 0.5;
+  export let useTTS = false;
+  export let minimapEnabled = true;
+  export let isRunning = false;  // Make this a prop instead of local state
 
   let seconds = 0;
   let minutes = 0;
   let timerInterval;
   let reminderInterval;
-  let isRunning = false;
   let isMuted = false;
-  let volume = 0.5;
-  let useTTS = false;
-  let minimapEnabled = true;
   let consoleMessages = [];
-  let selectedRole = "Any";
 
   // Get the appropriate roles based on game type
   $: gameData = gameType === 'lol' ? lolReminders : deadlockReminders;
@@ -98,7 +98,7 @@
       seconds = totalSeconds % 60;
     }
   }
-  
+
   function clearReminderInterval() {
         if (reminderInterval) {
             clearInterval(reminderInterval);
@@ -152,13 +152,8 @@
   }
 
   function toggleTimer() {
+    isRunning = !isRunning;
     if (isRunning) {
-      clearInterval(timerInterval);
-      clearReminderInterval();
-      isRunning = false;
-      playSound(pauseSound);
-    } else {
-      isRunning = true;
       playSound(startSound);
       timerInterval = setInterval(() => {
         seconds++;
@@ -170,6 +165,10 @@
         checkReminders(totalSeconds);
       }, 1000);
       startReminderInterval();
+    } else {
+      clearInterval(timerInterval);
+      clearReminderInterval();
+      playSound(pauseSound);
     }
   }
 
@@ -195,22 +194,6 @@
 </script>
 
 <div class="text-center text-gray-100">
-  <!-- Minimap Toggle -->
-  <div class="absolute top-4 right-4 flex items-center space-x-2">
-    <input 
-        type="checkbox" 
-        id="minimapToggle"
-        bind:checked={minimapEnabled}
-        class="form-checkbox h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-    />
-    <label 
-        for="minimapToggle" 
-        class="text-gray-300 text-sm"
-    >
-        Minimap Reminders
-    </label>
-</div>
-
   <div class="flex justify-center items-center gap-2 mb-4">
       <div class="text-4xl font-mono text-gray-100">{formattedTime}</div>
       <div class="flex flex-col">
@@ -228,21 +211,6 @@
           </button>
       </div>
   </div>
-  
-  <!-- Role selector -->
-  <div class="mb-4">
-    <label for="role" class="block text-sm font-medium text-gray-300 mb-2">Select Role</label>
-    <select
-      id="role"
-      bind:value={selectedRole}
-      class="mt-1 block w-48 mx-auto py-2 px-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-      disabled={isRunning}
-    >
-      {#each roles as role}
-        <option value={role}>{role}</option>
-      {/each}
-    </select>
-  </div>
 
   <!-- Game control buttons -->
   <div class="space-x-4 mb-4">
@@ -258,41 +226,6 @@
     >
       End Game
     </button>
-  </div>
-
-  <!-- Audio controls section -->
-  <div class="flex items-center justify-center space-x-4 mb-6">
-    <div class="flex items-center space-x-8">
-      <!-- Volume controls -->
-      <div class="flex items-center space-x-2">
-          <div class="flex items-center space-x-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" />
-            </svg>
-            <input 
-              type="range" 
-              min="0" 
-              max="1" 
-              step="0.01" 
-              bind:value={volume}
-              class="w-24 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-            />
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" />
-            </svg>
-          </div>
-      </div>
-      
-      <!-- TTS Toggle -->
-      <div class="flex items-center space-x-2">
-          <label class="text-gray-400 text-sm">Use TTS</label>
-          <input 
-              type="checkbox" 
-              bind:checked={useTTS}
-              class="form-checkbox h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-          />
-      </div>
-    </div>
   </div>
   
   <!-- Latest Message Banner -->
