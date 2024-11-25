@@ -1,5 +1,6 @@
 <script>
   import { onDestroy, onMount } from 'svelte';
+  import { base } from '$app/paths';
   import lolReminders from '$lib/data/lol-reminders.json';
   import deadlockReminders from '$lib/data/deadlock-reminders.json';
 
@@ -90,6 +91,14 @@
       });
   }
 
+  function adjustTime(direction) {
+    const totalSeconds = minutes * 60 + seconds + direction * 60;
+    if (totalSeconds >= 0) {  // Prevent negative time
+      minutes = Math.floor(totalSeconds / 60);
+      seconds = totalSeconds % 60;
+    }
+  }
+  
   function clearReminderInterval() {
         if (reminderInterval) {
             clearInterval(reminderInterval);
