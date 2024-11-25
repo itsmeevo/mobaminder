@@ -9,7 +9,11 @@
   export let volume = 0.5;
   export let useTTS = false;
   export let minimapEnabled = true;
-  export let isRunning = false;  // Make this a prop instead of local state
+  export let roleRemindersEnabled = true;
+  export let objectiveRemindersEnabled = true;
+  export let macroRemindersEnabled = true;
+  export let isRunning = false;
+  let lastMacroReminder = 0;
 
   let seconds = 0;
   let minutes = 0;
@@ -67,28 +71,125 @@
       sound.play();
     }
   }
+  
+  function getRandomReminder(pool) {
+    const index = Math.floor(Math.random() * pool.length);
+    return pool[index];
+  }
+
+  function getMacroPhase(totalSeconds) {
+    if (totalSeconds <= 600) return "early";
+    if (totalSeconds <= 1200) return "mid";
+    return "late";
+  }
+
+  function shouldShowReminder(reminder) {
+    // Check if reminder type is enabled
+    if (reminder.type === 'role' && !roleRemindersEnabled) return false;
+    if (reminder.type === 'objective' && !objectiveRemindersEnabled) return false;
+    if (reminder.type === 'macro' && !macroRemindersEnabled) return false;
+
+    // Check if role matches
+    return reminder.role === "Any" || reminder.role === selectedRole;
+  }
+
+  function getRandomMacroReminder(poolArray, currentRole) {
+    // Filter the pool for relevant role messages
+    const relevantPools = poolArray.filter(pool => 
+      pool.role === "Any" || pool.role === currentRole
+    );
+
+    if (relevantPools.length === 0) return null;
+
+    // Randomly select a pool (Any or role-specific)
+    const selectedPool = relevantPools[Math.floor(Math.random() * relevantPools.length)];
+    
+    // Randomly select a message from the chosen pool
+    const message = selectedPool.messages[Math.floor(Math.random() * selectedPool.messages.length)];
+
+    return {
+      message,
+      role: selectedPool.role
+    };
+  }
+
+  function checkMacroReminders(totalSeconds) {
+    if (!macroRemindersEnabled) return;
+
+    const phase = getMacroPhase(totalSeconds);
+    const macroConfig = gameData.reminders.macro[phase];
+
+    if (totalSeconds >= macroConfig.timeRange[0] && 
+        totalSeconds <= macroConfig.timeRange[1] && 
+        totalSeconds >= lastMacroReminder + macroConfig.interval) {
+      
+      const reminder = getRandomMacroReminder(macroConfig.pool, selectedRole);
+      
+      if (reminder) {
+        consoleMessages = [
+          { 
+            time: formatTime(totalSeconds),
+            message: reminder.message,
+            role: reminder.role,
+            type: "macro"
+          },
+          ...consoleMessages
+        ];
+
+        if (useTTS) {
+          speak(reminder.message);
+        } else {
+          playSound(reminderSound);
+        }
+
+        lastMacroReminder = totalSeconds;
+      }
+    }
+  }
 
   function checkReminders(totalSeconds) {
-      const reminders = gameData.reminders;
-      
-      reminders.forEach(reminder => {
-          if (totalSeconds === reminder.time && 
-              (reminder.role === "Any" || reminder.role === selectedRole)) {
-              consoleMessages = [
-                  { 
-                      time: formatTime(totalSeconds),
-                      message: reminder.message,
-                      role: reminder.role
-                  },
-                  ...consoleMessages
-              ];
-              if (useTTS) {
-                  speak(reminder.message);
-              } else {
-                  playSound(reminderSound);
-              }
-          }
+    // Check regular (objective and role) reminders
+    const objectiveReminders = gameData.reminders.objective || [];
+    const roleReminders = gameData.reminders.role || [];
+    
+    if (objectiveRemindersEnabled) {
+      objectiveReminders.forEach(reminder => {
+        if (totalSeconds === reminder.time && 
+            (reminder.role === "Any" || reminder.role === selectedRole)) {
+          addReminder(reminder, totalSeconds);
+        }
       });
+    }
+
+    if (roleRemindersEnabled) {
+      roleReminders.forEach(reminder => {
+        if (totalSeconds === reminder.time && 
+            (reminder.role === "Any" || reminder.role === selectedRole)) {
+          addReminder(reminder, totalSeconds);
+        }
+      });
+    }
+
+    // Check macro reminders
+    checkMacroReminders(totalSeconds);
+  }
+
+  function addReminder(reminder, totalSeconds) {
+    consoleMessages = [
+      { 
+        time: formatTime(totalSeconds),
+        message: reminder.message,
+        role: reminder.role,
+        type: reminder.type || 'objective'
+      },
+      ...consoleMessages
+    ];
+
+    if (useTTS) {
+      speak(reminder.message);
+    } else {
+      playSound(reminderSound);
+    }
   }
 
   function adjustTime(direction) {
@@ -152,9 +253,15 @@
   }
 
   function toggleTimer() {
-    isRunning = !isRunning;
     if (isRunning) {
+      clearInterval(timerInterval);
+      clearReminderInterval();
+      isRunning = false;
+      playSound(pauseSound);
+    } else {
+      isRunning = true;
       playSound(startSound);
+      lastMacroReminder = 0; // Reset macro reminder timer
       timerInterval = setInterval(() => {
         seconds++;
         if (seconds === 60) {
@@ -165,10 +272,32 @@
         checkReminders(totalSeconds);
       }, 1000);
       startReminderInterval();
-    } else {
-      clearInterval(timerInterval);
-      clearReminderInterval();
-      playSound(pauseSound);
+    }
+  }
+
+  function getTypeColor(type) {
+    switch (type) {
+      case 'role':
+        return 'bg-blue-600 text-white';
+      case 'objective':
+        return 'bg-yellow-600 text-white';
+      case 'macro':
+        return 'bg-purple-600 text-white';
+      default:
+        return 'bg-gray-600 text-white';
+    }
+  }
+
+  function formatType(type) {
+    switch (type) {
+      case 'role':
+        return 'Role';
+      case 'objective':
+        return 'Objective';
+      case 'macro':
+        return 'Macro';
+      default:
+        return type;
     }
   }
 
@@ -234,12 +363,16 @@
       <div class="text-xl font-semibold text-gray-100">
         {latestMessage.message}
       </div>
-      <div class="text-sm text-gray-300 font-mono mt-1">
-        [{latestMessage.time}] {#if latestMessage.role !== "Any"}
-          <span class="ml-2 px-2 py-0.5 bg-gray-600 rounded-full text-xs">
+      <div class="text-sm text-gray-300 font-mono mt-1 flex items-center gap-2">
+        <span>[{latestMessage.time}]</span>
+        {#if latestMessage.role !== "Any"}
+          <span class="px-2 py-0.5 bg-gray-600 rounded-full text-xs">
             {latestMessage.role}
           </span>
         {/if}
+        <span class="px-2 py-0.5 {getTypeColor(latestMessage.type)} rounded-full text-xs">
+          {formatType(latestMessage.type)}
+        </span>
       </div>
     </div>
   {/if}
@@ -251,11 +384,16 @@
         <div class="border-b border-gray-700 py-2">
           <span class="font-mono text-gray-400">[{message.time}]</span>
           <span class="ml-2 text-gray-200">{message.message}</span>
-          {#if message.role !== "Any"}
-            <span class="ml-2 px-2 py-0.5 bg-gray-700 rounded-full text-xs text-gray-300">
-              {message.role}
+          <div class="flex gap-2 mt-1">
+            {#if message.role !== "Any"}
+              <span class="px-2 py-0.5 bg-gray-700 rounded-full text-xs text-gray-300">
+                {message.role}
+              </span>
+            {/if}
+            <span class="px-2 py-0.5 {getTypeColor(message.type)} rounded-full text-xs">
+              {formatType(message.type)}
             </span>
-          {/if}
+          </div>
         </div>
       {/each}
     {/if}
@@ -266,6 +404,7 @@
     {/if}
   </div>
 </div>
+
 
 <style>
 .animate-fade-in {
