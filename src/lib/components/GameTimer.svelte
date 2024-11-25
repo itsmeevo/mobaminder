@@ -126,23 +126,24 @@
       const reminder = getRandomMacroReminder(macroConfig.pool, selectedRole);
       
       if (reminder) {
-        consoleMessages = [
-          { 
-            time: formatTime(totalSeconds),
-            message: reminder.message,
-            role: reminder.role,
-            type: "macro"
-          },
-          ...consoleMessages
-        ];
+          lastNotificationTime = totalSeconds;
+          consoleMessages = [
+            { 
+              time: formatTime(totalSeconds),
+              message: reminder.message,
+              role: reminder.role,
+              type: "macro"
+            },
+            ...consoleMessages
+          ];
 
-        if (useTTS) {
-          speak(reminder.message);
-        } else {
-          playSound(reminderSound);
-        }
+          if (useTTS) {
+            speak(reminder.message);
+          } else {
+            playSound(reminderSound);
+          }
 
-        lastMacroReminder = totalSeconds;
+          lastMacroReminder = totalSeconds;
       }
     }
   }
@@ -175,6 +176,7 @@
   }
 
   function addReminder(reminder, totalSeconds) {
+    lastNotificationTime = totalSeconds;
     consoleMessages = [
       { 
         time: formatTime(totalSeconds),
@@ -190,7 +192,7 @@
     } else {
       playSound(reminderSound);
     }
-  }
+}
 
   function adjustTime(direction) {
     const totalSeconds = minutes * 60 + seconds + direction * 60;
@@ -207,44 +209,54 @@
         }
     }
 
-    function addMinimapReminder() {
-        if (!minimapEnabled) return;
-        
-        consoleMessages = [
-            { 
-                time: formatTime(minutes * 60 + seconds),
-                message: "Check Minimap",
-                role: "Any"
-            },
-            ...consoleMessages
-        ];
-        if (useTTS) {
-            speak("Check Minimap");
-        } else {
-            playSound(minimapSound);
-        }
+  function addMinimapReminder() {
+    if (!minimapEnabled) return;
+    
+    const currentTotalSeconds = minutes * 60 + seconds;
+    
+    // Don't show if before 1:31 or if another notification was shown in last 5 seconds
+    if (currentTotalSeconds < minimapStartTime || 
+        (currentTotalSeconds - lastNotificationTime) < 5) {
+        return;
     }
-
-    function startReminderInterval() {
-        clearReminderInterval();
-        if (minimapEnabled) {
-            reminderInterval = setInterval(() => {
-                addMinimapReminder();
-            }, 15000);
-        }
+    
+    lastNotificationTime = currentTotalSeconds;
+    consoleMessages = [
+        { 
+            time: formatTime(currentTotalSeconds),
+            message: "Check Minimap",
+            role: "Any",
+            type: "reminder"
+        },
+        ...consoleMessages
+    ];
+    if (useTTS) {
+        speak("Check Minimap");
+    } else {
+        playSound(minimapSound);
     }
+  }
 
-    // Watch for changes to minimapEnabled
-    $: {
-        if (isRunning) {
-            startReminderInterval();
-        }
-    }
+  function startReminderInterval() {
+      clearReminderInterval();
+      if (minimapEnabled) {
+          reminderInterval = setInterval(() => {
+              addMinimapReminder();
+          }, 15000);
+      }
+  }
 
-    onDestroy(() => {
-        clearInterval(timerInterval);
-        clearReminderInterval();
-    });
+  // Watch for changes to minimapEnabled
+  $: {
+      if (isRunning) {
+          startReminderInterval();
+      }
+  }
+
+  onDestroy(() => {
+      clearInterval(timerInterval);
+      clearReminderInterval();
+  });
 
   function formatTime(totalSeconds) {
     const m = Math.floor(totalSeconds / 60);
