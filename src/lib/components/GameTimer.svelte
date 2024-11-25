@@ -39,11 +39,11 @@
   }
 
   onMount(() => {
-    startSound = new Audio('/audio/start.wav');
-    pauseSound = new Audio('/audio/pause.wav');
-    endSound = new Audio('/audio/end.wav');
-    minimapSound = new Audio('/audio/minimap.wav');
-    reminderSound = new Audio('/audio/reminder.wav');
+    startSound = new Audio(`${base}/audio/start.wav`);
+    pauseSound = new Audio(`${base}/audio/pause.wav`);
+    endSound = new Audio(`${base}/audio/end.wav`);
+    minimapSound = new Audio(`${base}/audio/minimap.wav`);
+    reminderSound = new Audio(`${base}/audio/reminder.wav`);
 
     // Preload sounds and set initial volumes
     [startSound, pauseSound, endSound, minimapSound, reminderSound].forEach(sound => {
