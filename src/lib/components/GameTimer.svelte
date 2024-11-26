@@ -3,6 +3,7 @@
   import { base } from '$app/paths';
   import lolReminders from '$lib/data/lol-reminders.json';
   import deadlockReminders from '$lib/data/deadlock-reminders.json';
+  import { getLiveGameData, getActivePlayer, detectPlayerRole } from '$lib/services/liveGameService';
 
   export let gameType = 'lol';
   export let selectedRole = "Any";
@@ -14,6 +15,10 @@
   export let macroRemindersEnabled = true;
   export let isRunning = false;
   let lastMacroReminder = 0;
+  let isLiveGame = false;
+  let liveGameInterval;
+  let gamePollingInterval;
+  let lastEventId = 0;
 
   let seconds = 0;
   let minutes = 0;
@@ -45,12 +50,142 @@
       }
   }
 
+  async function checkLiveGame() {
+  try {
+    const gameData = await getLiveGameData();
+    if (gameData && gameData.gameData) {
+      isLiveGame = true;
+      // Convert gameTime to minutes and seconds
+      const gameTime = gameData.gameData.gameTime;
+      minutes = Math.floor(gameTime / 60);
+      seconds = Math.floor(gameTime % 60);
+
+      // Auto-detect role if not already set
+      if (selectedRole === "Any") {
+        const activePlayer = await getActivePlayer();
+        const detectedRole = await detectPlayerRole(activePlayer, gameData.allPlayers);
+        if (detectedRole !== "Any") {
+          selectedRole = detectedRole;
+        }
+      }
+
+      return true;
+    }
+  } catch {
+    isLiveGame = false;
+  }
+  return false;
+}
+
+function startLiveGameSync() {
+  liveGameInterval = setInterval(async () => {
+    try {
+      const gameData = await getLiveGameData();
+      if (gameData && gameData.gameData) {
+        const gameTime = gameData.gameData.gameTime;
+        minutes = Math.floor(gameTime / 60);
+        seconds = Math.floor(gameTime % 60);
+
+        // Check for new events
+        if (gameData.events) {
+          gameData.events.Events.forEach(event => {
+            if (event.EventID > lastEventId) {
+              handleGameEvent(event);
+              lastEventId = event.EventID;
+            }
+          });
+        }
+      } else {
+        clearInterval(liveGameInterval);
+        isLiveGame = false;
+      }
+    } catch (error) {
+      console.error('Error syncing game data:', error);
+      clearInterval(liveGameInterval);
+      isLiveGame = false;
+    }
+  }, 1000);
+}
+
+function handleGameEvent(event) {
+  // Handle various game events
+  switch (event.EventName) {
+    case 'DragonKill':
+      addReminder({
+        message: `${event.DragonType} Dragon taken. Next dragon in 5 minutes.`,
+        role: "Any",
+        type: "objective"
+      }, minutes * 60 + seconds);
+      break;
+    case 'HeraldKill':
+      addReminder({
+        message: "Herald taken. Next herald spawns in 6 minutes.",
+        role: "Any",
+        type: "objective"
+      }, minutes * 60 + seconds);
+      break;
+    case 'BaronKill':
+      addReminder({
+        message: "Baron taken. Next baron spawns in 6 minutes.",
+        role: "Any",
+        type: "objective"
+      }, minutes * 60 + seconds);
+      break;
+  }
+}
+
+async function pollForGame() {
+  gamePollingInterval = setInterval(async () => {
+    if (!isLiveGame) {
+      try {
+        const hasLiveGame = await checkLiveGame();
+        if (hasLiveGame && !isRunning) {
+          toggleTimer();
+        }
+      } catch (error) {
+        console.error('Error polling for game:', error);
+      }
+    }
+  }, 5000);  // Check every 5 seconds for a new game
+}
+
+  async function toggleTimer() {
+    if (isRunning) {
+      clearInterval(timerInterval);
+      clearInterval(liveGameInterval);
+      clearReminderInterval();
+      isRunning = false;
+      playSound(pauseSound);
+    } else {
+      const hasLiveGame = await checkLiveGame();
+      isRunning = true;
+      playSound(startSound);
+
+      if (hasLiveGame) {
+        startLiveGameSync();
+      } else {
+        // Fallback to manual timer
+        timerInterval = setInterval(() => {
+          seconds++;
+          if (seconds === 60) {
+            seconds = 0;
+            minutes++;
+          }
+          const totalSeconds = minutes * 60 + seconds;
+          checkReminders(totalSeconds);
+        }, 1000);
+      }
+      startReminderInterval();
+    }
+  }
+
   onMount(() => {
     startSound = new Audio(`${base}/audio/start.wav`);
     pauseSound = new Audio(`${base}/audio/pause.wav`);
     endSound = new Audio(`${base}/audio/end.wav`);
     minimapSound = new Audio(`${base}/audio/minimap.wav`);
     reminderSound = new Audio(`${base}/audio/reminder.wav`);
+    pollForGame();
 
     // Preload sounds and set initial volumes
     [startSound, pauseSound, endSound, minimapSound, reminderSound].forEach(sound => {
@@ -74,6 +209,7 @@
     }
   }
   
+
   function getRandomReminder(pool) {
     const index = Math.floor(Math.random() * pool.length);
     return pool[index];
@@ -276,37 +412,16 @@
   }
 
   onDestroy(() => {
-      clearInterval(timerInterval);
-      clearReminderInterval();
+    clearInterval(timerInterval);
+    clearInterval(liveGameInterval);
+    clearInterval(gamePollingInterval);
+    clearReminderInterval();
   });
 
   function formatTime(totalSeconds) {
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  }
-
-  function toggleTimer() {
-    if (isRunning) {
-      clearInterval(timerInterval);
-      clearReminderInterval();
-      isRunning = false;
-      playSound(pauseSound);
-    } else {
-      isRunning = true;
-      playSound(startSound);
-      lastMacroReminder = 0; // Reset macro reminder timer
-      timerInterval = setInterval(() => {
-        seconds++;
-        if (seconds === 60) {
-          seconds = 0;
-          minutes++;
-        }
-        const totalSeconds = minutes * 60 + seconds;
-        checkReminders(totalSeconds);
-      }, 1000);
-      startReminderInterval();
-    }
   }
 
   // Add minimap to the type color function
@@ -362,6 +477,15 @@
 </script>
 
 <div class="text-center text-gray-100">
+  {#if isLiveGame}
+    <div class="text-green-500 text-sm mb-2 flex items-center justify-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      Live Game Connected
+    </div>
+  {/if}
   <div class="flex justify-center items-center gap-2 mb-4">
       <div class="text-4xl font-mono text-gray-100">{formattedTime}</div>
       <div class="flex flex-col">
