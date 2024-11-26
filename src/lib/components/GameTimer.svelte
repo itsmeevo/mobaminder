@@ -55,25 +55,15 @@
     const gameData = await getLiveGameData();
     if (gameData && gameData.gameData) {
       isLiveGame = true;
-      // Convert gameTime to minutes and seconds
       const gameTime = gameData.gameData.gameTime;
       minutes = Math.floor(gameTime / 60);
       seconds = Math.floor(gameTime % 60);
-
-      // Auto-detect role if not already set
-      if (selectedRole === "Any") {
-        const activePlayer = await getActivePlayer();
-        const detectedRole = await detectPlayerRole(activePlayer, gameData.allPlayers);
-        if (detectedRole !== "Any") {
-          selectedRole = detectedRole;
-        }
-      }
-
       return true;
     }
-  } catch {
-    isLiveGame = false;
+  } catch (error) {
+    // Silently handle errors
   }
+  isLiveGame = false;
   return false;
 }
 
@@ -136,18 +126,19 @@ function handleGameEvent(event) {
 
 async function pollForGame() {
   gamePollingInterval = setInterval(async () => {
-    if (!isLiveGame) {
+    if (!isLiveGame && !isRunning) {
       try {
         const hasLiveGame = await checkLiveGame();
-        if (hasLiveGame && !isRunning) {
+        if (hasLiveGame) {
           toggleTimer();
         }
       } catch (error) {
-        console.error('Error polling for game:', error);
+        // Silence errors during polling
       }
     }
-  }, 5000);  // Check every 5 seconds for a new game
+  }, 5000); // Poll every 5 seconds
 }
+
 
   async function toggleTimer() {
     if (isRunning) {
