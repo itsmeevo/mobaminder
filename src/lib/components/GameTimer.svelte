@@ -21,6 +21,8 @@
   let reminderInterval;
   let isMuted = false;
   let consoleMessages = [];
+  let minimapStartTime = 91;  // 1:31 in seconds
+  let lastNotificationTime = 0;
 
   // Get the appropriate roles based on game type
   $: gameData = gameType === 'lol' ? lolReminders : deadlockReminders;
@@ -202,12 +204,32 @@
     }
   }
 
-  function clearReminderInterval() {
-        if (reminderInterval) {
-            clearInterval(reminderInterval);
-            reminderInterval = null;
-        }
+  // Watch for changes to reminder settings
+  $: {
+    // When any reminder setting changes and timer is running
+    if (isRunning) {
+      clearReminderInterval();
+      startReminderInterval();
     }
+  }
+
+  // Watch for changes to reminder settings
+  $: {
+    if (isRunning) {
+      const totalSeconds = minutes * 60 + seconds;
+      if (objectiveRemindersEnabled || roleRemindersEnabled || macroRemindersEnabled) {
+        // Re-check reminders at current time when settings change
+        checkReminders(totalSeconds);
+      }
+    }
+  }
+
+  function clearReminderInterval() {
+    if (reminderInterval) {
+      clearInterval(reminderInterval);
+      reminderInterval = null;
+    }
+  }
 
   function addMinimapReminder() {
     if (!minimapEnabled) return;
@@ -226,7 +248,7 @@
             time: formatTime(currentTotalSeconds),
             message: "Check Minimap",
             role: "Any",
-            type: "reminder"
+            type: "minimap"
         },
         ...consoleMessages
     ];
@@ -238,12 +260,12 @@
   }
 
   function startReminderInterval() {
-      clearReminderInterval();
-      if (minimapEnabled) {
-          reminderInterval = setInterval(() => {
-              addMinimapReminder();
-          }, 15000);
-      }
+    clearReminderInterval();
+    if (minimapEnabled) {
+      reminderInterval = setInterval(() => {
+        addMinimapReminder();
+      }, 15000);
+    }
   }
 
   // Watch for changes to minimapEnabled
@@ -287,6 +309,7 @@
     }
   }
 
+  // Add minimap to the type color function
   function getTypeColor(type) {
     switch (type) {
       case 'role':
@@ -295,6 +318,8 @@
         return 'bg-yellow-600 text-white';
       case 'macro':
         return 'bg-purple-600 text-white';
+      case 'minimap':
+        return 'bg-green-600 text-white';
       default:
         return 'bg-gray-600 text-white';
     }
@@ -308,6 +333,8 @@
         return 'Objective';
       case 'macro':
         return 'Macro';
+      case 'minimap':
+        return 'Minimap';
       default:
         return type;
     }
@@ -390,7 +417,7 @@
   {/if}
 
   <!-- Message History Console -->
-  <div class="max-w-md mx-auto bg-gray-800 rounded-lg p-4 h-48 overflow-y-auto text-left">
+  <div class="max-w-md mx-auto bg-gray-800 rounded-lg p-4 h-192 overflow-y-auto text-left">
     {#if consoleMessages.length > 1}
       {#each consoleMessages.slice(1) as message}
         <div class="border-b border-gray-700 py-2">
